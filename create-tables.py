@@ -5,22 +5,40 @@
 import psycopg2
 from configparser import ConfigParser
  
+def config(filename='database2.ini', section='postgresql'):
+	# create a parser
+	parser = ConfigParser()
+	# read config file
+	parser.read(filename)
+
+	# get section, default to postgresql
+	db = {}
+	if parser.has_section(section):
+		params = parser.items(section)
+		for param in params:
+			db[param[0]] = param[1]
+			#print("%s = %s" % (param[0], param[1]))
+	else:
+		raise Exception('Section {0} not found in the {1} file'.format(section, filename))
+
+	return db
+
 def create_tables():
-	""" create tables in the PostgreSQL database"""
+	""" create tables in the PostgreSQL database """
 	commands = (
 		"""
-		CREATE TABLE vendors (
+		CREATE TABLE IF NOT EXISTS vendors (
 			vendor_id SERIAL PRIMARY KEY,
 			vendor_name VARCHAR(255) NOT NULL
 		)
 		""",
-		""" CREATE TABLE parts (
+		""" CREATE TABLE IF NOT EXISTS parts (
 				part_id SERIAL PRIMARY KEY,
 				part_name VARCHAR(255) NOT NULL
 				)
 		""",
 		"""
-		CREATE TABLE part_drawings (
+		CREATE TABLE IF NOT EXISTS part_drawings (
 				part_id INTEGER PRIMARY KEY,
 				file_extension VARCHAR(5) NOT NULL,
 				drawing_data BYTEA NOT NULL,
@@ -30,7 +48,7 @@ def create_tables():
 		)
 		""",
 		"""
-		CREATE TABLE vendor_parts (
+		CREATE TABLE IF NOT EXISTS vendor_parts (
 				vendor_id INTEGER NOT NULL,
 				part_id INTEGER NOT NULL,
 				PRIMARY KEY (vendor_id , part_id),
@@ -45,9 +63,10 @@ def create_tables():
 	conn = None
 	try:
 		# read the connection parameters
-		params = ConfigParser()
+		params = config()
 		# connect to the PostgreSQL server
-		conn = psycopg2.connect(dbname='mydb', user='postgres', password='')
+		conn = psycopg2.connect(**params)
+
 		cur = conn.cursor()
 		# create table one by one
 		for command in commands:
